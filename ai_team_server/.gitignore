@@ -1,0 +1,77 @@
+# compiled output
+/dist
+/node_modules
+/build
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+
+# Tests
+/coverage
+/.nyc_output
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# dotenv environment variable files
+.env*
+!.env.example
+
+# Database / user dumps — contain production PII, never commit
+database-export.json
+clerk-users-export.json
+
+# Local database backups — production PII. Folder is kept, contents never committed.
+/backups/*
+!/backups/.gitkeep
+
+# temp directory
+.temp
+.tmp
+/tmp/
+
+# Local database maintenance scripts containing environment-specific credentials
+/scripts/check-user.ts
+/scripts/delete-user-conversations-supabase.ts
+/scripts/explore-db.js
+/scripts/update-oauth-ids.ts
+/scripts/verify-oauth-sync.ts
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+/generated/prisma
+/src/generated/prisma/

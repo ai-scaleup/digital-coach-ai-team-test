@@ -1,0 +1,646 @@
+// prisma/schema.prisma
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AgentName {
+  JIM
+  ALEX
+  MIKE
+  TONY
+  LARA
+  VALENTINA
+  DANIELE
+  SIMONE
+  NIKO
+  ALADINO
+  LAURA
+  DAN
+  MAX
+  SOFIA
+  ROBERTA
+  SARA_AI
+  JENNIFER_AI
+  CHIARA_AI
+  FREAP_CHIARA
+  FREAP_JENNIFER
+  PEARL_ADMIN
+  // --- test agents ---
+  TEST_JIM
+  TEST_ALEX
+  TEST_MIKE
+  TEST_TONY
+  TEST_LARA
+  TEST_VALENTINA
+  TEST_DANIELE
+  TEST_SIMONE
+  TEST_NIKO
+  TEST_ALADINO
+  TEST_LAURA
+  TEST_DAN
+  TEST_MAX
+  TEST_SOFIA
+  TEST_ROBERTA
+  TEST_SARA_AI
+  TEST_JENNIFER_AI
+  TEST_CHIARA_AI
+}
+
+// ─────────────────────────────────────────────────────────────
+// User Preference Enums (Italian)
+// ─────────────────────────────────────────────────────────────
+enum ContentLanguage {
+  ITALIANO
+  INGLESE
+  SPAGNOLO
+  FRANCESE
+  TEDESCO
+  PORTOGHESE
+  ALTRO
+}
+
+enum ToneOfVoice {
+  PROFESSIONALE_FORMALE
+  AMICHEVOLE_INFORMALE
+  TECNICO_ESPERTO
+  MOTIVAZIONALE_ENERGETICO
+  EMPATICO_COMPRENSIVO
+  INNOVATIVO_VISIONARIO
+  DIVERTENTE_CREATIVO
+}
+
+enum MarketingKnowledge {
+  BASE
+  INTERMEDIO
+  AVANZATO
+  EXPERT
+}
+
+enum ResponseLength {
+  CONCISA
+  BILANCIATA
+  DETTAGLIATA
+}
+
+enum EmojiUsage {
+  MAI
+  MINIMO
+  MODERATO
+  FREQUENTE
+}
+
+enum ProactivityLevel {
+  SOLO_REATTIVO
+  MODERATAMENTE_PROATTIVO
+  MOLTO_PROATTIVO
+}
+
+enum QuestionStyle {
+  UNA_ALLA_VOLTA
+  A_GRUPPI
+  MINIMO_INDISPENSABILE
+}
+
+enum DecisionHelpStyle {
+  ANALISI_OPZIONI
+  RACCOMANDAZIONE_DIRETTA
+  ENTRAMBI
+}
+
+enum LearningPreference {
+  APPRENDIMENTO_CONTINUO
+  COMPORTAMENTO_STATICO
+  AGGIORNAMENTI_PERIODICI
+}
+
+enum MarketComparison {
+  SEMPRE
+  SOLO_RILEVANTI
+  MAI
+}
+
+enum TokenAlertLevel {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum TokenAlertScope {
+  CONVERSATION
+  MONTHLY
+}
+
+// Chat completion model the platform calls. OpenAI only for now; other
+// providers get appended here later -- values are only ever added, never
+// removed, so stored rows stay readable.
+enum ApiModel {
+  GPT_5
+  GPT_5_MINI
+  GPT_5_NANO
+  GPT_4_1
+  GPT_4_1_MINI
+  GPT_4O
+  GPT_4O_MINI
+  O3
+  O4_MINI
+}
+
+model User {
+  id            String                @id @default(uuid())
+  email         String                @unique
+  oauthId       String                @unique
+  username      String?
+  // Token allowance stamped onto every conversation this user creates from now
+  // on. Null means no quota. Kept on the user rather than derived from the
+  // conversations so a limit assigned before the first chat still survives.
+  tokenLimit    Int?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  // Per-agent assignments with timing & expiry
+  agents        AssignedAgent[]
+  // Per-group assignments with timing & expiry
+  groups        AssignedGroup[]
+  // User conversations
+  conversations Conversation[]
+  // User preferences (one-to-many: per agent)
+  preferences   UserPreference[]
+  // Token usage per agent
+  tokenUsage    UserAgentTokenUsage[]
+  // Memberships
+  memberships   AssignedMembership[]
+  // Daily Usage Tracking
+  dailyUsage    DailyTokenUsage[]
+  // Token Quota Stops
+  stopLogs      TokenLimitStopLog[]
+  // UI Alerts
+  alerts        UserAlert[]
+}
+
+// Pearl white-label data is isolated from the application's existing User
+// model. The mapped database names retain the requested prefix.
+model PearlWhitelabelUser {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  oauthId   String   @unique
+  username  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userData PearlWhitelabelUserData[]
+
+  @@map("pearl_whitelabel_User")
+}
+
+model PearlWhitelabelUserData {
+  id           String              @id @default(uuid())
+  campaignName String
+  outboundId   String
+  bearerToken  String
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  userId       String
+  user         PearlWhitelabelUser @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([userId])
+  @@map("pearl_whitelabel_UserData")
+}
+
+// ─────────────────────────────────────────────────────────────
+// User Preferences Model (Per User + Agent combination)
+// ─────────────────────────────────────────────────────────────
+model UserPreference {
+  id                  String             @id @default(uuid())
+  oauthId             String // User's OAuth ID
+  email               String // User's email, denormalized for lookup/display
+  agentName           AgentName // Each agent has its own preferences per user
+  // ── SECTION: IDENTITY ──
+  displayName         String? // What user wants to be called
+  businessName        String? // Name of user's business
+  // ── SECTION: TONGUE (Language) ──
+  contentLanguage     ContentLanguage    @default(ITALIANO) // Language for AI-generated content
+  responseLanguage    ContentLanguage    @default(ITALIANO) // Language for AI responses
+  // ── SECTION: BRAND STYLE ──
+  toneOfVoice         ToneOfVoice        @default(PROFESSIONALE_FORMALE)
+  marketingKnowledge  MarketingKnowledge @default(INTERMEDIO)
+  // ── SECTION: INTERACTION ──
+  responseLength      ResponseLength     @default(BILANCIATA)
+  emojiUsage          EmojiUsage         @default(MINIMO)
+  // ── SECTION: AI BEHAVIOR ──
+  proactivityLevel    ProactivityLevel   @default(MODERATAMENTE_PROATTIVO)
+  questionStyle       QuestionStyle      @default(UNA_ALLA_VOLTA)
+  decisionHelpStyle   DecisionHelpStyle  @default(ENTRAMBI)
+  // ── SECTION: PERSONALIZATION ──
+  learningPreference  LearningPreference @default(APPRENDIMENTO_CONTINUO)
+  marketComparison    MarketComparison   @default(SOLO_RILEVANTI)
+  // ── ONBOARDING STATUS ──
+  onboardingCompleted Boolean            @default(false)
+  onboardingStep      Int                @default(0)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  user                User               @relation(fields: [oauthId], references: [oauthId], onDelete: Cascade)
+
+  @@unique([oauthId, agentName], map: "uniq_preference_per_user_agent")
+  @@index([oauthId])
+  @@index([email])
+  @@index([agentName])
+}
+
+model AssignedAgent {
+  id           String    @id @default(uuid())
+  userId       String
+  agentName    AgentName
+  startsAt     DateTime  @default(now())
+  expiresAt    DateTime?
+  durationDays Int?
+  isActive     Boolean   @default(true)
+
+  // Tokens Limits
+  monthlyTokenLimit Int? 
+  
+  threshold50Notified  Boolean            @default(false)
+  threshold80Notified  Boolean            @default(false)
+  threshold90Notified  Boolean            @default(false)
+  threshold100Notified Boolean            @default(false)
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Allowed multiples just in case, or we keep unique
+  @@index([userId, isActive])
+  @@index([expiresAt])
+}
+
+model AgentGroup {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String?
+  isActive    Boolean          @default(true)
+
+  // Token allowance for a single conversation with any agent in this group.
+  singleConversationTokenLimit Int @default(0)
+
+  items       AgentGroupItem[]
+  assignments AssignedGroup[]
+  // Membership templates that bundle this team
+  membershipLinks MembershipTemplateGroup[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([isActive])
+}
+
+model AgentGroupItem {
+  id        String     @id @default(uuid())
+  groupId   String
+  agentName AgentName
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  group     AgentGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, agentName], map: "uniq_agent_per_group")
+  @@index([groupId])
+}
+
+model AssignedGroup {
+  id           String     @id @default(uuid())
+  userId       String
+  groupId      String
+  startsAt     DateTime   @default(now())
+  expiresAt    DateTime?
+  durationDays Int?
+  isActive     Boolean    @default(true)
+
+  monthlyTokenLimit Int? 
+  
+  threshold50Notified  Boolean            @default(false)
+  threshold80Notified  Boolean            @default(false)
+  threshold90Notified  Boolean            @default(false)
+  threshold100Notified Boolean            @default(false)
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group        AgentGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive])
+  @@index([groupId])
+  @@index([expiresAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Conversation & Message Models
+// ─────────────────────────────────────────────────────────────
+model Conversation {
+  id          String    @id
+  userId      String
+  email       String?
+  title       String
+  agentId     String
+  sessionId   String
+  folderId    String?
+  tokenLimit  Int?
+  tokenUsed   Int?
+  tokenLeft   Int?
+  archived    Boolean   @default(false)
+  lastUpdated DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  messages    Message[]
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([agentId])
+  @@index([archived])
+  @@index([lastUpdated])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  text           String
+  sender         String
+  time           String
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}
+
+model ChatLog {
+  id          Int      @id @default(autoincrement())
+  sessionId   String   @map("session_id") @db.VarChar(255)
+  sender      String   @db.VarChar(50)
+  messageText String   @map("message_text")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([sessionId])
+  @@index([sender])
+  @@map("chat_logs")
+}
+
+model MetisChatLog {
+  id          Int      @id @default(autoincrement())
+  sessionId   String   @map("session_id") @db.VarChar(255)
+  sender      String   @db.VarChar(50)
+  messageText String   @map("message_text")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([sessionId])
+  @@index([sender])
+  @@map("metis_chat_logs")
+}
+
+model ChiaraInboundChatLog {
+  id          Int      @id @default(autoincrement())
+  sessionId   String   @map("session_id") @db.VarChar(255)
+  sender      String   @db.VarChar(50)
+  messageText String   @map("message_text")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([sessionId])
+  @@index([sender])
+  @@map("chiara_inbound_chat_logs")
+}
+
+model FreapChiaraInboundChatLog {
+  id          Int      @id @default(autoincrement())
+  sessionId   String   @map("session_id") @db.VarChar(255)
+  sender      String   @db.VarChar(50)
+  messageText String   @map("message_text")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([sessionId])
+  @@index([sender])
+  @@map("freap_chiara_inbound_chat_logs")
+}
+
+model FreapJenniferChatLog {
+  id          Int      @id @default(autoincrement())
+  sessionId   String   @map("session_id") @db.VarChar(255)
+  sender      String   @db.VarChar(50)
+  messageText String   @map("message_text")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([sessionId])
+  @@index([sender])
+  @@map("freap_jennifer_chat_logs")
+}
+
+model ChiaraLead {
+  id        Int      @id @default(autoincrement())
+  sessionId String   @unique @map("session_id") @db.VarChar(255)
+  name      String   @db.VarChar(255)
+  email     String   @db.VarChar(255)
+  phone     String   @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@index([createdAt])
+  @@map("chiara_leads")
+}
+
+model ChiaraWhatsappLead {
+  id        Int      @id @default(autoincrement())
+  sessionId String   @map("session_id") @db.VarChar(255)
+  name      String   @db.VarChar(255)
+  email     String   @db.VarChar(255)
+  phone     String   @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@index([sessionId])
+  @@index([email])
+  @@index([createdAt])
+  @@map("chiara_whatsapp_leads")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Standalone Tag Model (no relations)
+// ─────────────────────────────────────────────────────────────
+model TagField {
+  id          String   @id @default(uuid())
+  tagName     String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────
+// Tag Model (no relations)
+// ─────────────────────────────────────────────────────────────
+model Tag {
+  id        String   @id @default(uuid())
+  sessionId String   @db.VarChar(255)
+  tags      String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sessionId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Token Usage Tracking (per User per Agent)
+// ─────────────────────────────────────────────────────────────
+model UserAgentTokenUsage {
+  id           String    @id @default(uuid())
+  oauthId      String
+  agentName    AgentName
+  totalUsedInputTokens  Int @default(0)
+  totalUsedOutputTokens Int @default(0)
+  totalUsedTokens       Int @default(0)
+  totalTokensLeft       Int @default(0)
+  totalTokenLimit       Int @default(1000)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  user         User      @relation(fields: [oauthId], references: [oauthId], onDelete: Cascade)
+
+  @@unique([oauthId, agentName], map: "uniq_token_usage_per_user_agent")
+  @@index([oauthId])
+  @@index([agentName])
+}
+
+model TokenUsageAlertRule {
+  id               String          @id @default(uuid())
+  scope            TokenAlertScope @default(CONVERSATION)
+  thresholdPercent Int
+  level            TokenAlertLevel
+  message          String
+  isActive         Boolean         @default(true)
+  sortOrder        Int             @default(0)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@unique([scope, thresholdPercent], map: "uniq_token_alert_rule_scope_threshold")
+  @@index([scope, isActive])
+  @@index([sortOrder])
+}
+
+// Panel-level configuration behind the admin "Token Usage Alerts" card: the
+// token allowance the threshold percentages are measured against, and the
+// model the conversation runs on. One row per scope, created on demand.
+model TokenAlertSettings {
+  id         String          @id @default(uuid())
+  scope      TokenAlertScope @unique(map: "uniq_token_alert_settings_scope")
+  tokenLimit Int             @default(0)
+  apiModel   ApiModel        @default(GPT_4O_MINI)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @default(now()) @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────
+// Memberships & Dynamic Limits
+// ─────────────────────────────────────────────────────────────
+
+model MembershipTemplate {
+  id                String    @id @default(uuid())
+  name              String    @unique
+  durationDays      Int
+  monthlyTokenLimit Int
+  
+  includedAgents    AgentName[]
+
+  // Teams bundled into this membership. Links are soft-toggled through
+  // isActive rather than removed, so unlinking a team never drops a row.
+  includedGroups    MembershipTemplateGroup[]
+
+  assignments       AssignedMembership[]
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model AssignedMembership {
+  id                   String             @id @default(uuid())
+  userId               String
+  membershipTemplateId String
+  startsAt             DateTime           @default(now())
+  expiresAt            DateTime?
+  isActive             Boolean            @default(true)
+  monthlyTokenLimit    Int?
+  
+  threshold50Notified  Boolean            @default(false)
+  threshold80Notified  Boolean            @default(false)
+  threshold90Notified  Boolean            @default(false)
+  threshold100Notified Boolean            @default(false)
+
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template             MembershipTemplate @relation(fields: [membershipTemplateId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive])
+}
+
+// A team bundled into a membership template. Assigning the membership then
+// grants the user every agent on these teams, the same way a direct team
+// assignment does.
+//
+// Unlinking flips isActive instead of removing the row, so a template's team
+// history is never destroyed and re-adding the same team reuses its row.
+model MembershipTemplateGroup {
+  id                   String   @id @default(uuid())
+  membershipTemplateId String
+  groupId              String
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  template MembershipTemplate @relation(fields: [membershipTemplateId], references: [id], onDelete: Cascade)
+  group    AgentGroup         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipTemplateId, groupId], map: "uniq_group_per_membership_template")
+  @@index([membershipTemplateId, isActive])
+  @@index([groupId])
+}
+
+model DailyTokenUsage {
+  id           String    @id @default(uuid())
+  oauthId      String
+  agentName    AgentName
+  date         DateTime  @db.Date
+  inputTokens  Int       @default(0)
+  outputTokens Int       @default(0)
+  totalTokens  Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  user         User      @relation(fields: [oauthId], references: [oauthId], onDelete: Cascade)
+
+  @@unique([oauthId, agentName, date], map: "uniq_daily_token_usage")
+  @@index([oauthId])
+  @@index([date])
+} 
+
+model TokenLimitStopLog {
+  id               String    @id @default(uuid())
+  oauthId          String
+  agentName        AgentName
+  reason           String
+  attemptedTokens  Int       @default(0)
+  createdAt        DateTime  @default(now())
+  user             User      @relation(fields: [oauthId], references: [oauthId], onDelete: Cascade)
+
+  @@index([oauthId])
+  @@index([createdAt])
+}
+
+model UserAlert {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String   // e.g. "TOKEN_THRESHOLD_80"
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+}
