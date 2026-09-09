@@ -1,11 +1,35 @@
 services:
   - type: web
-    name: ai-team-server
+    name: digital-coach-ai-team-test-server
     runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
     rootDir: ai_team_server
     buildCommand: npm ci && npm run prisma:migrate:deploy && npm run build
     # Not `npm run start:prod`: its prestart hook recompiles the app that
     # buildCommand just built, delaying the health check on every boot.
-    startCommand: node dist/main.js
+    startCommand: npm run start:render
     healthCheckPath: /
     autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.0
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_WEBHOOK_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ADMIN_API_KEY
+        sync: false
+      - key: PEARL_ADMIN_API_URL
+        sync: false
