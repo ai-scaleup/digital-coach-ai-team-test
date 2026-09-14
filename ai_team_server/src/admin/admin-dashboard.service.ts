@@ -227,8 +227,10 @@ export class AdminDashboardService {
   async listRecentAssignments(limit: number = 6): Promise<RecentAssignment[]> {
     const take = Math.min(50, Math.max(1, Number.isFinite(limit) ? limit : 6));
 
+    // Read-only fan-out, so no transaction: see listAgentGroups for why a
+    // batch $transaction is the wrong tool against the pooled connection.
     const [memberships, groups, agents, tokenLimits] =
-      await this.prisma.$transaction([
+      await Promise.all([
         this.prisma.assignedMembership.findMany({
           take,
           orderBy: { createdAt: 'desc' },
@@ -245,7 +247,7 @@ export class AdminDashboardService {
             group: { select: { name: true } },
           },
         }),
-        this.prisma.assignedAgent.findMany({
+        this.prisma.singleAssignedAgent.findMany({
           take,
           orderBy: { createdAt: 'desc' },
           include: { user: { select: { email: true, oauthId: true } } },
@@ -267,7 +269,7 @@ export class AdminDashboardService {
           assignment.durationDays ??
           this.getDurationDays(assignment.startsAt, assignment.expiresAt),
         tokens:
-          assignment.monthlyTokenLimit ??
+          assignment.tokenLimit ??
           (await this.getAgentTokenLimit(
             assignment.user.oauthId,
             assignment.agentName,
@@ -563,7 +565,7 @@ export class AdminDashboardService {
     const normalizedType = type === 'team' ? 'group' : type;
 
     if (normalizedType === 'agent') {
-      const existing = await this.prisma.assignedAgent.findUnique({
+      const existing = await this.prisma.singleAssignedAgent.findUnique({
         where: { id },
         include: { user: { select: { oauthId: true } } },
       });
@@ -576,7 +578,7 @@ export class AdminDashboardService {
       );
 
       return this.prisma.$transaction(async (tx) => {
-        const assignment = await tx.assignedAgent.update({
+        const assignment = await tx.singleAssignedAgent.update({
           where: { id },
           data,
         });
@@ -659,18 +661,18 @@ export class AdminDashboardService {
     const normalizedType = type === 'team' ? 'group' : type;
 
     if (normalizedType === 'agent') {
-      const existing = await this.prisma.assignedAgent.findUnique({
+      const existing = await this.prisma.singleAssignedAgent.findUnique({
         where: { id },
         include: { user: { select: { oauthId: true } } },
       });
       if (!existing) throw new NotFoundException('Agent assignment not found');
 
       return this.prisma.$transaction(async (tx) => {
-        await tx.assignedAgent.delete({ where: { id } });
+        await tx.singleAssignedAgent.delete({ where: { id } });
 
         // Quota falls back to userAgentTokenUsage when no assignment grants
         // the agent, so a removed plan must not leave a spendable budget.
-        const stillAssigned = await tx.assignedAgent.findFirst({
+        const stillAssigned = await tx.singleAssignedAgent.findFirst({
           where: { userId: existing.userId, agentName: existing.agentName },
         });
 
@@ -744,13 +746,9 @@ export class AdminDashboardService {
         },
       }),
       this.prisma.tokenLimitStopLog.deleteMany(),
-      this.prisma.assignedAgent.updateMany({
+      this.prisma.singleAssignedAgent.updateMany({
         data: {
-          monthlyTokenLimit: 0,
-          threshold50Notified: false,
-          threshold80Notified: false,
-          threshold90Notified: false,
-          threshold100Notified: false,
+          tokenLimit: 0,
         },
       }),
       this.prisma.assignedGroup.updateMany({
@@ -806,7 +804,7 @@ export class AdminDashboardService {
     }
 
     if (updates.deactivateAgents) {
-      const res = await this.prisma.assignedAgent.updateMany({
+      const res = await this.prisma.singleAssignedAgent.updateMany({
         where: { userId: { in: userIds }, isActive: true },
         data: { isActive: false },
       });

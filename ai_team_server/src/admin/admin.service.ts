@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import {
   Prisma,
-  AssignedAgent,
+  SingleAssignedAgent,
   AssignedGroup,
   AgentGroup,
   User,
@@ -109,16 +109,16 @@ export class AdminService {
     expiresAt?: Date | null;
     durationDays?: number | null;
     isActive?: boolean;
-  }): Promise<AssignedAgent> {
+  }): Promise<SingleAssignedAgent> {
     const { userId, agentName, startsAt, expiresAt, durationDays, isActive } =
       params;
 
-    const existingActive = await this.prisma.assignedAgent.findFirst({
+    const existingActive = await this.prisma.singleAssignedAgent.findFirst({
       where: { userId, agentName, isActive: true },
     });
 
     if (existingActive) {
-      return this.prisma.assignedAgent.update({
+      return this.prisma.singleAssignedAgent.update({
         where: { id: existingActive.id },
         data: {
           startsAt: startsAt ?? existingActive.startsAt,
@@ -130,7 +130,7 @@ export class AdminService {
       });
     }
 
-    return this.prisma.assignedAgent.create({
+    return this.prisma.singleAssignedAgent.create({
       data: {
         userId,
         agentName,
@@ -280,7 +280,7 @@ export class AdminService {
 
   /**
    * Runs every minute:
-   *  - Deactivates AssignedAgent which have expiresAt <= now
+   *  - Deactivates SingleAssignedAgent which have expiresAt <= now
    *  - DELETES AssignedGroup which have expiresAt <= now
    *
    * So if you assign a group with durationDays (or explicit expiresAt),
@@ -291,7 +291,7 @@ export class AdminService {
     const now = new Date();
 
     // 1) AGENT-LEVEL: mark expired as inactive
-    const expiredAgents = await this.prisma.assignedAgent.findMany({
+    const expiredAgents = await this.prisma.singleAssignedAgent.findMany({
       where: {
         isActive: true,
         expiresAt: { not: null, lte: now },
@@ -300,12 +300,12 @@ export class AdminService {
     });
 
     if (expiredAgents.length) {
-      await this.prisma.assignedAgent.updateMany({
+      await this.prisma.singleAssignedAgent.updateMany({
         where: { id: { in: expiredAgents.map((a) => a.id) } },
         data: { isActive: false },
       });
       this.logger.debug(
-        `Auto-deactivated ${expiredAgents.length} AssignedAgent records`,
+        `Auto-deactivated ${expiredAgents.length} SingleAssignedAgent records`,
       );
     }
 
@@ -357,7 +357,7 @@ export class AdminService {
     email: string,
     agentName: AgentName,
     opts: BaseAssignOpts = {},
-  ): Promise<AssignedAgent> {
+  ): Promise<SingleAssignedAgent> {
     if (!email?.trim()) throw new BadRequestException('email is required');
 
     const user = await this.getUserByEmail(email.trim());
@@ -383,7 +383,7 @@ export class AdminService {
     email: string,
     agentNames: AgentName[],
     opts: BaseAssignOpts = {},
-  ): Promise<AssignedAgent[]> {
+  ): Promise<SingleAssignedAgent[]> {
     if (!email?.trim()) throw new BadRequestException('email is required');
     if (!Array.isArray(agentNames) || agentNames.length === 0) {
       throw new BadRequestException('agentNames must be a non-empty array');
@@ -397,15 +397,15 @@ export class AdminService {
     );
 
     return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const results: AssignedAgent[] = [];
+      const results: SingleAssignedAgent[] = [];
 
       for (const agentName of agentNames) {
-        const existingActive = await tx.assignedAgent.findFirst({
+        const existingActive = await tx.singleAssignedAgent.findFirst({
           where: { userId: user.id, agentName, isActive: true },
         });
 
         if (existingActive) {
-          const updated = await tx.assignedAgent.update({
+          const updated = await tx.singleAssignedAgent.update({
             where: { id: existingActive.id },
             data: {
               startsAt: startsAt ?? existingActive.startsAt,
@@ -420,7 +420,7 @@ export class AdminService {
           });
           results.push(updated);
         } else {
-          const created = await tx.assignedAgent.create({
+          const created = await tx.singleAssignedAgent.create({
             data: {
               userId: user.id,
               agentName,
@@ -445,9 +445,9 @@ export class AdminService {
   async deactivateAgentByEmail(
     email: string,
     agentName: AgentName,
-  ): Promise<AssignedAgent> {
+  ): Promise<SingleAssignedAgent> {
     const user = await this.getUserByEmail(email.trim());
-    const existingActive = await this.prisma.assignedAgent.findFirst({
+    const existingActive = await this.prisma.singleAssignedAgent.findFirst({
       where: { userId: user.id, agentName, isActive: true },
     });
     if (!existingActive) {
@@ -457,14 +457,14 @@ export class AdminService {
     }
 
     return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const deactivated = await tx.assignedAgent.update({
+      const deactivated = await tx.singleAssignedAgent.update({
         where: { id: existingActive.id },
         data: { isActive: false },
       });
 
       // Quota falls back to userAgentTokenUsage when no assignment grants the
       // agent, so a revoked agent must not leave a spendable budget behind.
-      const stillAssigned = await tx.assignedAgent.findFirst({
+      const stillAssigned = await tx.singleAssignedAgent.findFirst({
         where: { userId: user.id, agentName, isActive: true },
       });
 
@@ -483,11 +483,11 @@ export class AdminService {
   async listAssignmentsByEmail(
     email: string,
     activeOnly = false,
-  ): Promise<AssignedAgent[]> {
+  ): Promise<SingleAssignedAgent[]> {
     const user = await this.getUserByEmail(email.trim());
     const now = new Date();
 
-    const where: Prisma.AssignedAgentWhereInput = {
+    const where: Prisma.SingleAssignedAgentWhereInput = {
       userId: user.id,
       ...(activeOnly ? { isActive: true } : {}),
       ...(activeOnly
@@ -495,7 +495,7 @@ export class AdminService {
         : {}),
     };
 
-    return this.prisma.assignedAgent.findMany({
+    return this.prisma.singleAssignedAgent.findMany({
       where,
       orderBy: { createdAt: 'desc' },
     });
@@ -507,7 +507,7 @@ export class AdminService {
     const user = await this.getUserByEmail(email.trim());
 
     const now = new Date();
-    const rows = await this.prisma.assignedAgent.findMany({
+    const rows = await this.prisma.singleAssignedAgent.findMany({
       where: {
         userId: user.id,
         isActive: true,
@@ -643,15 +643,16 @@ export class AdminService {
       [params.sortBy ?? 'createdAt']: params.sortOrder ?? 'desc',
     };
 
-    const [total, data] = await this.prisma.$transaction([
-      this.prisma.agentGroup.count({ where }),
-      this.prisma.agentGroup.findMany({
-        where,
-        orderBy,
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-    ]);
+    // These reads do not need snapshot consistency. Run them sequentially so
+    // one request does not check out two database connections just to render a
+    // paginated list.
+    const total = await this.prisma.agentGroup.count({ where });
+    const data = await this.prisma.agentGroup.findMany({
+      where,
+      orderBy,
+      skip: (page - 1) * limit,
+      take: limit,
+    });
 
     return {
       data,
@@ -791,7 +792,7 @@ export class AdminService {
     opts: BaseAssignOpts = {},
   ): Promise<{
     addedToGroup: { count: number };
-    assignments: AssignedAgent[];
+    assignments: SingleAssignedAgent[];
   }> {
     if (!email?.trim()) throw new BadRequestException('email is required');
     if (!Array.isArray(agentNames) || agentNames.length === 0) {
@@ -887,7 +888,7 @@ export class AdminService {
     email: string,
     selector: GroupSelector,
     opts: BaseAssignOpts = {},
-  ): Promise<AssignedAgent[]> {
+  ): Promise<SingleAssignedAgent[]> {
     if (!email?.trim()) throw new BadRequestException('email is required');
 
     const user = await this.getUserByEmail(email.trim());
@@ -923,7 +924,7 @@ export class AdminService {
     email: string,
     selectors: GroupSelector[],
     opts: BaseAssignOpts = {},
-  ): Promise<AssignedAgent[]> {
+  ): Promise<SingleAssignedAgent[]> {
     if (!email?.trim()) throw new BadRequestException('email is required');
     if (!Array.isArray(selectors) || selectors.length === 0) {
       throw new BadRequestException(
@@ -1027,7 +1028,7 @@ export class AdminService {
       agentNames: AgentName[];
     },
     opts: BaseAssignOpts = {},
-  ): Promise<{ group: AgentGroup; assignments: AssignedAgent[] }> {
+  ): Promise<{ group: AgentGroup; assignments: SingleAssignedAgent[] }> {
     if (!email?.trim()) throw new BadRequestException('email is required');
 
     const { group } = await this.createAgentGroupWithAgents(groupInput);
@@ -1067,7 +1068,7 @@ export class AdminService {
     alsoAssignAgents = true,
   ): Promise<{
     groupAssignment: AssignedGroup;
-    agentAssignments?: AssignedAgent[];
+    agentAssignments?: SingleAssignedAgent[];
   }> {
     if (!email?.trim()) throw new BadRequestException('email is required');
     const user = await this.getUserByEmail(email.trim());
@@ -1316,7 +1317,7 @@ export class AdminService {
       const groupAgentNames = new Set(groupAgents.map((g) => g.agentName));
 
       // Get user's assigned agents that are also in this group
-      const where: Prisma.AssignedAgentWhereInput = {
+      const where: Prisma.SingleAssignedAgentWhereInput = {
         userId: user.id,
         agentName: { in: Array.from(groupAgentNames) },
         ...(activeOnly ? { isActive: true } : {}),
@@ -1325,7 +1326,7 @@ export class AdminService {
           : {}),
       };
 
-      const assignments = await this.prisma.assignedAgent.findMany({
+      const assignments = await this.prisma.singleAssignedAgent.findMany({
         where,
         select: { agentName: true },
         orderBy: { createdAt: 'desc' },
@@ -1343,7 +1344,7 @@ export class AdminService {
     }
 
     // No group filter - return all assigned agents
-    const where: Prisma.AssignedAgentWhereInput = {
+    const where: Prisma.SingleAssignedAgentWhereInput = {
       userId: user.id,
       ...(activeOnly ? { isActive: true } : {}),
       ...(activeOnly
@@ -1351,7 +1352,7 @@ export class AdminService {
         : {}),
     };
 
-    const assignments = await this.prisma.assignedAgent.findMany({
+    const assignments = await this.prisma.singleAssignedAgent.findMany({
       where,
       select: { agentName: true },
       orderBy: { createdAt: 'desc' },

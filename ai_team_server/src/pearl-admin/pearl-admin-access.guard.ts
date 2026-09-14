@@ -31,7 +31,7 @@ export class PearlAdminAccessGuard implements CanActivate {
     }
 
     const now = new Date();
-    const assignment = await this.prisma.assignedAgent.findFirst({
+    const assignment = await this.prisma.singleAssignedAgent.findFirst({
       where: {
         agentName: 'PEARL_ADMIN',
         isActive: true,

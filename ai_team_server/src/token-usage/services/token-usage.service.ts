@@ -158,7 +158,7 @@ export class TokenUsageService {
     const directAssigned = user.agents.find((a) => a.agentName === agentName);
     if (directAssigned) {
       hasAccess = true;
-      totalLimit += directAssigned.monthlyTokenLimit || 0;
+      totalLimit += directAssigned.tokenLimit || 0;
       if (directAssigned.startsAt < earliestStart)
         earliestStart = directAssigned.startsAt;
     }

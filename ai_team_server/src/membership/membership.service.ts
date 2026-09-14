@@ -211,8 +211,8 @@ export class MembershipService {
   /**
    * Give the user the teams a membership bundles, on the membership's clock.
    *
-   * Both an AssignedGroup and the per-agent AssignedAgent rows are written,
-   * because access is read off AssignedAgent while a team's per-conversation
+   * Both an AssignedGroup and the per-agent SingleAssignedAgent rows are written,
+   * because access is read off SingleAssignedAgent while a team's per-conversation
    * allowance is read off AssignedGroup — writing only one of the two would
    * grant tokens the user cannot spend, or agents with no team allowance
    * behind them.
@@ -260,7 +260,7 @@ export class MembershipService {
       }
 
       for (const { agentName } of group.items) {
-        const existingAgent = await this.prisma.assignedAgent.findFirst({
+        const existingAgent = await this.prisma.singleAssignedAgent.findFirst({
           where: { userId, agentName, isActive: true },
           select: { id: true, expiresAt: true },
         });
@@ -270,13 +270,13 @@ export class MembershipService {
             existingAgent.expiresAt === null ||
             existingAgent.expiresAt > expiresAt;
           if (!keepsLonger) {
-            await this.prisma.assignedAgent.update({
+            await this.prisma.singleAssignedAgent.update({
               where: { id: existingAgent.id },
               data: { expiresAt, durationDays },
             });
           }
         } else {
-          await this.prisma.assignedAgent.create({
+          await this.prisma.singleAssignedAgent.create({
             data: { userId, agentName, expiresAt, durationDays, isActive: true },
           });
         }
@@ -351,7 +351,7 @@ export class MembershipService {
     });
 
     // The membership row on its own grants tokens but no agents — access is
-    // read off AssignedAgent. Materializing the bundled teams is what makes a
+    // read off SingleAssignedAgent. Materializing the bundled teams is what makes a
     // membership's agents actually reachable for the user.
     const groupIds = template.includedGroups.map((link) => link.groupId);
     if (groupIds.length) {

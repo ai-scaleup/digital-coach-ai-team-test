@@ -24,6 +24,7 @@ import { TokenUsageModule } from './token-usage/token-usage.module';
 import { TokenAlertsModule } from './token-alerts/token-alerts.module';
 import { MembershipModule } from './membership/membership.module';
 import { PearlAdminModule } from './pearl-admin/pearl-admin.module';
+import { SingleAssignedAgentModule } from './single-assigned-agent/single-assigned-agent.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { PearlAdminModule } from './pearl-admin/pearl-admin.module';
     TokenAlertsModule,
     MembershipModule,
     PearlAdminModule,
+    SingleAssignedAgentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

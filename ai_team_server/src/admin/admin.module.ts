@@ -1,7 +1,6 @@
 // src/admin/admin.module.ts
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AuthMiddleware } from '../auth/auth.middleware';
-import { PrismaService } from 'src/prisma/prisma.service';
 
 import { AdminService } from './admin.service';
 import { AdminController } from './admin.controller';
@@ -13,7 +12,9 @@ import { TokenUsageModule } from 'src/token-usage/token-usage.module';
 @Module({
   imports: [MembershipModule, TokenUsageModule],
   controllers: [AdminController, AdminDashboardController],
-  providers: [PrismaService, AdminService, AdminDashboardService],
+  // PrismaModule is global. Providing PrismaService again here creates a
+  // second connection pool and needlessly consumes scarce Supabase sessions.
+  providers: [AdminService, AdminDashboardService],
   exports: [AdminService, AdminDashboardService],
 })
 export class AdminModule implements NestModule {

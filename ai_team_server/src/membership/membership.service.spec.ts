@@ -31,7 +31,7 @@ describe('MembershipService', () => {
       create: jest.fn(),
       update: jest.fn(),
     },
-    assignedAgent: {
+    singleAssignedAgent: {
       findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -402,7 +402,7 @@ describe('MembershipService', () => {
       items: [{ agentName: 'JIM' }, { agentName: 'SARA_AI' }],
     });
     prisma.assignedGroup.findFirst.mockResolvedValue(null);
-    prisma.assignedAgent.findFirst.mockResolvedValue(null);
+    prisma.singleAssignedAgent.findFirst.mockResolvedValue(null);
 
     await service.assignMembership('user-1', 'membership-template-1');
 
@@ -415,9 +415,9 @@ describe('MembershipService', () => {
         isActive: true,
       },
     });
-    // Access is read off AssignedAgent, so every agent on the team gets a row.
-    expect(prisma.assignedAgent.create).toHaveBeenCalledTimes(2);
-    expect(prisma.assignedAgent.create).toHaveBeenCalledWith({
+    // Access is read off SingleAssignedAgent, so every agent on the team gets a row.
+    expect(prisma.singleAssignedAgent.create).toHaveBeenCalledTimes(2);
+    expect(prisma.singleAssignedAgent.create).toHaveBeenCalledWith({
       data: {
         userId: 'user-1',
         agentName: 'JIM',
@@ -449,7 +449,7 @@ describe('MembershipService', () => {
       id: 'assigned-group-1',
       expiresAt: new Date('2027-01-01T00:00:00.000Z'),
     });
-    prisma.assignedAgent.findFirst.mockResolvedValue({
+    prisma.singleAssignedAgent.findFirst.mockResolvedValue({
       id: 'assigned-agent-1',
       expiresAt: null,
     });
@@ -457,9 +457,9 @@ describe('MembershipService', () => {
     await service.assignMembership('user-1', 'membership-template-1');
 
     expect(prisma.assignedGroup.update).not.toHaveBeenCalled();
-    expect(prisma.assignedAgent.update).not.toHaveBeenCalled();
+    expect(prisma.singleAssignedAgent.update).not.toHaveBeenCalled();
     expect(prisma.assignedGroup.create).not.toHaveBeenCalled();
-    expect(prisma.assignedAgent.create).not.toHaveBeenCalled();
+    expect(prisma.singleAssignedAgent.create).not.toHaveBeenCalled();
   });
 
   it('throws when assigning a missing membership template', async () => {

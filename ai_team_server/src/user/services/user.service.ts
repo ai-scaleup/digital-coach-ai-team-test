@@ -322,7 +322,7 @@ export class UserService {
           select: {
             agentName: true,
             durationDays: true,
-            monthlyTokenLimit: true,
+            tokenLimit: true,
           },
         },
         tokenUsage: {

@@ -164,7 +164,7 @@ model User {
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
   // Per-agent assignments with timing & expiry
-  agents        AssignedAgent[]
+  agents        SingleAssignedAgent[]
   // Per-group assignments with timing & expiry
   groups        AssignedGroup[]
   // User conversations
@@ -252,7 +252,7 @@ model UserPreference {
   @@index([agentName])
 }
 
-model AssignedAgent {
+model SingleAssignedAgent {
   id           String    @id @default(uuid())
   userId       String
   agentName    AgentName
@@ -261,13 +261,18 @@ model AssignedAgent {
   durationDays Int?
   isActive     Boolean   @default(true)
 
-  // Tokens Limits
-  monthlyTokenLimit Int? 
-  
-  threshold50Notified  Boolean            @default(false)
-  threshold80Notified  Boolean            @default(false)
-  threshold90Notified  Boolean            @default(false)
-  threshold100Notified Boolean            @default(false)
+  // Token allowance carried by this direct grant. Null means the grant confers
+  // access only -- the allowance behind it comes from a team or membership.
+  // Only the direct assign path ever writes this.
+  tokenLimit   Int?
+
+  // Running totals for this grant, so the agent tier can be read without
+  // joining UserAgentTokenUsage. DailyTokenUsage stays the source of truth
+  // for cycle maths -- these are a rollup, not the ledger.
+  usedTokens   Int       @default(0)
+  inputTokens  Int       @default(0)
+  outputTokens Int       @default(0)
+  tokensLeft   Int?
 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

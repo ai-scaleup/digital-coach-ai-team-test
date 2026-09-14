@@ -61,11 +61,11 @@ export interface IUser {
   updatedAt: Dateish;
 
   // relations
-  agents?: IAssignedAgent[];
+  agents?: ISingleAssignedAgent[];
   groups?: IAssignedGroup[];
 }
 
-export interface IAssignedAgent {
+export interface ISingleAssignedAgent {
   id: string;
   userId: string;
   agentName: AgentName;
@@ -132,7 +132,7 @@ export interface IAssignedGroup {
  * (payloads used in service/controller)
  * ================================ */
 
-export interface CreateAssignedAgentPayload {
+export interface CreateSingleAssignedAgentPayload {
   userId: string;
   agentName: AgentName;
   startsAt?: Dateish;
@@ -141,7 +141,7 @@ export interface CreateAssignedAgentPayload {
   isActive?: boolean; // defaults to true in DB
 }
 
-export interface UpdateAssignedAgentPayload {
+export interface UpdateSingleAssignedAgentPayload {
   id: string;
   startsAt?: Dateish;
   expiresAt?: Dateish | null; // null to clear

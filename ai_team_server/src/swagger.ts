@@ -41,6 +41,10 @@ export function setupSwagger(app: INestApplication) {
     .addTag('user-preferences', 'Per-user, per-agent personalization settings')
     .addTag('admin', 'Admin agent, group, assignment, and user management')
     .addTag('admin-dashboard', 'Admin dashboard user operations')
+    .addTag(
+      'agent-assignments',
+      'CRUD over SingleAssignedAgent rows — a direct, per-user agent grant with its own timing, token allowance, and usage rollup (usedTokens / inputTokens / outputTokens / tokensLeft)',
+    )
     .addTag('memberships', 'Membership templates and assignments')
     .addTag('webhooks', 'External webhook receivers')
     .addTag('sara-ai', 'Sara AI chat logs and analytics')

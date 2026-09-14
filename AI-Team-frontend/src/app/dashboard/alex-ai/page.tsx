@@ -2021,7 +2021,7 @@ export default function App() {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar">
+          <div className="relative flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar">
             <div className="max-w-6xl mx-auto space-y-6">
               {messages.map((msg, idx) => (
                 <div
@@ -2110,13 +2110,49 @@ export default function App() {
 
               <div ref={messagesEndRef} />
             </div>
+
+            {!isPreferenceLoading && !isPreferenceReady && !isPrefsOpen && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center p-4 md:p-8 bg-slate-50/70 dark:bg-slate-950/70 backdrop-blur-sm">
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="alex-preferences-title"
+                  aria-describedby="alex-preferences-description"
+                  className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-sky-300/70 dark:border-sky-500/30 bg-white/95 dark:bg-slate-900/95 p-7 md:p-9 text-center shadow-[0_24px_80px_rgba(14,165,233,0.25)]"
+                >
+                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-400 via-cyan-400 to-violet-500" />
+                  <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-sky-400/30 bg-sky-500/10 shadow-[0_0_30px_rgba(14,165,233,0.18)]">
+                    <User size={30} className="text-sky-500 dark:text-sky-400" />
+                  </div>
+                  <h2
+                    id="alex-preferences-title"
+                    className="text-2xl font-black tracking-tight text-slate-900 dark:text-white"
+                  >
+                    Completa il tuo profilo
+                  </h2>
+                  <p
+                    id="alex-preferences-description"
+                    className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300"
+                  >
+                    Prima di iniziare a chattare, configura le tue preferenze. Alex AI userà queste informazioni per personalizzare ogni risposta.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsPrefsOpen(true)}
+                    className="mt-7 inline-flex items-center justify-center gap-2 rounded-xl border border-sky-400 bg-gradient-to-r from-sky-500 to-cyan-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-sky-500/30 transition-all hover:scale-[1.02] hover:from-sky-400 hover:to-cyan-400 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900"
+                  >
+                    Configura le preferenze
+                    <ChevronRight size={18} strokeWidth={2.5} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Input Area */}
-          <div
-            className="sticky bottom-0 px-4 md:px-8 pb-4 md:pb-6"
-          >
-            <div className="max-w-6xl mx-auto">
+          {(isPreferenceLoading || isPreferenceReady) && (
+            <div className="sticky bottom-0 px-4 md:px-8 pb-4 md:pb-6">
+              <div className="max-w-6xl mx-auto">
               {/* Token usage announcer bar */}
               {isTokenLimitReached ? (
                 <div className="mb-3 flex items-center gap-2.5 rounded-xl border px-4 py-3 text-sm font-medium bg-rose-500/15 border-rose-500/50 text-rose-700 dark:text-rose-300">
@@ -2156,8 +2192,8 @@ export default function App() {
                 </div>
               )}
 
-              <div className="glass-panel rounded-2xl shadow-2xl border-2 border-sky-200 dark:border-sky-700/50 overflow-hidden">
-                <div className="flex items-end gap-3 p-3 md:p-4">
+                <div className="glass-panel rounded-2xl shadow-2xl border-2 border-sky-200 dark:border-sky-700/50 overflow-hidden">
+                  <div className="flex items-end gap-3 p-3 md:p-4">
 
                   <textarea
                     ref={textareaRef}
@@ -2190,10 +2226,11 @@ export default function App() {
                   >
                     <Send size={20} strokeWidth={2.5} />
                   </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

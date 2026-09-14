@@ -178,7 +178,7 @@ export default function AgentsAndTeamsPage() {
       });
 
       if (!response.ok) {
-        throw new Error(await response.text());
+        throw new Error(await parseApiError(response));
       }
 
       const payload = (await response.json()) as AgentGroupListResponse | AgentGroupListItem[];

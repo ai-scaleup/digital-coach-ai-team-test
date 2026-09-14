@@ -542,7 +542,7 @@ export class AdminController {
 
   /**
    * Assign a SINGLE agent to a user by email.
-   * Upserts the active AssignedAgent record for (user, agent) — nothing is deleted.
+   * Upserts the active SingleAssignedAgent record for (user, agent) — nothing is deleted.
    */
   @Post('assign/agent')
   @ApiOperation({ summary: 'Assign a single agent to a user by email' })
@@ -569,7 +569,7 @@ export class AdminController {
 
   /**
    * Deactivate a SINGLE direct agent assignment for a user by email.
-   * The AssignedAgent row is kept and flipped to isActive: false -- nothing is deleted.
+   * The SingleAssignedAgent row is kept and flipped to isActive: false -- nothing is deleted.
    */
   @Post('assign/agent/deactivate')
   @ApiOperation({ summary: 'Deactivate a single agent assignment for a user' })
@@ -591,7 +591,7 @@ export class AdminController {
   /**
    * Assign all agents from a single group (identified by id or name) to a user by email.
    * Service also UPSERTS an AssignedGroup for (user, group) automatically.
-   * Response is AssignedAgent[] (materialized per-agent assignments).
+   * Response is SingleAssignedAgent[] (materialized per-agent assignments).
    */
   @Post('assign/group')
   @ApiOperation({

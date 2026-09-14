@@ -45,7 +45,13 @@ const PUBLIC_ROUTES: PublicRoute[] = [
  * their own controller: the development token (DEV_API_TOKEN) is the only
  * credential they accept, and a Clerk JWT is not one of them.
  */
-const PUBLIC_PATH_PREFIXES: RegExp[] = [/^\/chiara-whatsapp(\/.*)?$/];
+const PUBLIC_PATH_PREFIXES: RegExp[] = [
+  /^\/chiara-whatsapp(\/.*)?$/,
+  // TEMPORARY: the single-agent-assignment CRUD is open while it is being
+  // wired up. Remove this entry (and restore AuthMiddleware in
+  // SingleAssignedAgentModule) before it ships.
+  /^\/admin\/agent-assignments(\/.*)?$/,
+];
 
 /**
  * The Swagger UI itself and the JSON documents behind it. Authentication now
